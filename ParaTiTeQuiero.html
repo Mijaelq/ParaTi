@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Girasoles</title>
+<meta name="description" content="Un campo de girasoles animado, en homenaje a los que aman la luz.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#141031;
+    --sky-mid:#5a2f63;
+    --sky-warm:#c9527a;
+    --sky-horizon:#f2955a;
+    --sun-glow:#ffd76a;
+    --hill-1:#241a3c;
+    --hill-2:#150f28;
+    --hill-3:#0a0714;
+    --petal-a:#ffdd55;
+    --petal-b:#e8871e;
+    --center-a:#5a3418;
+    --center-b:#2a170a;
+    --stem-a:#5f9153;
+    --stem-b:#2e5a2c;
+    --vh: 1vh;
+  }
+
+  *,*::before,*::after{ margin:0; padding:0; box-sizing:border-box; }
+
+  html,body{
+    width:100%;
+    height:100%;
+    background:#0a0714;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    position:relative;
+    height:calc(var(--vh, 1vh) * 100);
+    touch-action:manipulation;
+  }
+
+  /* ---------- ESCENA ---------- */
+  .scene{
+    position:absolute;
+    inset:0;
+    overflow:hidden;
+  }
+
+  .sky{
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(120% 65% at 50% 100%, var(--sky-horizon) 0%, transparent 60%),
+      linear-gradient(to bottom,
+        var(--sky-top) 0%,
+        var(--sky-mid) 45%,
+        var(--sky-warm) 72%,
+        var(--sky-horizon) 100%);
+  }
+
+  .stars{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:70%;
+  }
+  .star{
+    position:absolute;
+    width:2px;
+    height:2px;
+    border-radius:50%;
+    background:#fff;
+    opacity:0;
+    animation:twinkle 4s ease-in-out infinite;
+    will-change:opacity;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:0; }
+    50%{ opacity:var(--star-o,.8); }
+  }
+
+  .sun{
+    position:absolute;
+    left:50%;
+    top:42%;
+    width:min(38vw,220px);
+    height:min(38vw,220px);
+    border-radius:50%;
+    background:radial-gradient(circle at 45% 40%, #fff6d8 0%, var(--sun-glow) 35%, rgba(255,183,3,.35) 60%, transparent 72%);
+    filter:blur(1px);
+    transform:translate(-50%, 60%);
+    animation:sunDrift 60s ease-in-out infinite;
+    mix-blend-mode:screen;
+    will-change:transform;
+  }
+  /* Antes esta animación tocaba "top" (layout) en cada frame; ahora todo el
+     recorrido es transform, así que el navegador lo resuelve en el compositor
+     sin recalcular el layout ni repintar el resto de la escena. */
+  @keyframes sunDrift{
+    0%,100%{ transform:translate(-58%,4vh) scale(1); }
+    50%{ transform:translate(-42%,-4vh) scale(1.06); }
+  }
+
+  .hill{
+    position:absolute;
+    left:0;
+    width:100%;
+    bottom:0;
+  }
+  .hill svg{ display:block; width:100%; height:auto; }
+  .hill--1{ z-index:2; opacity:.9; }
+  .hill--2{ z-index:1; opacity:.95; }
+  .hill--3{ z-index:0; }
+
+  .pollen{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:6;
+  }
+  .mote{
+    position:absolute;
+    bottom:-4%;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:radial-gradient(circle, #fff3c4 0%, rgba(255,214,102,.6) 55%, transparent 75%);
+    animation:rise linear infinite;
+    opacity:0;
+    will-change:transform,opacity;
+  }
+  @keyframes rise{
+    0%{ opacity:0; transform:translate(0,0); }
+    8%{ opacity:.85; }
+    92%{ opacity:.5; }
+    100%{ opacity:0; transform:translate(var(--drift,20px), -115vh); }
+  }
+
+  /* ---------- CAMPO DE GIRASOLES ---------- */
+  .field{
+    position:absolute;
+    inset:0;
+    z-index:3;
+  }
+
+  .flower{
+    position:absolute;
+    bottom:0;
+    display:block;
+    height:var(--h, 42vh);
+    width:auto;
+    transform-origin:50% 100%;
+    transform:translateX(-50%) scaleY(0);
+    animation:
+      grow 1.6s cubic-bezier(.34,1.56,.64,1) forwards,
+      sway var(--sway-dur,8s) ease-in-out infinite;
+    animation-delay:var(--grow-delay,0s), calc(var(--grow-delay,0s) + 1.6s);
+    will-change:transform;
+    filter:
+      hue-rotate(var(--hue,0deg))
+      saturate(var(--sat,1))
+      brightness(var(--bri,1))
+      drop-shadow(0 6px 10px rgba(0,0,0,.35));
+  }
+
+  @keyframes grow{
+    0%{ transform:translateX(-50%) scaleY(0); }
+    60%{ transform:translateX(-50%) scaleY(1.04); }
+    100%{ transform:translateX(-50%) scaleY(1); }
+  }
+
+  @keyframes sway{
+    0%,100%{ rotate:calc(-1deg * var(--sway-amt,3)); }
+    50%{ rotate:calc(1deg * var(--sway-amt,3)); }
+  }
+
+  .flower .head{
+    transform-origin:50% 100%;
+    transform-box:fill-box;
+    animation:track var(--track-dur,60s) ease-in-out infinite;
+    will-change:transform;
+  }
+  @keyframes track{
+    0%{ transform:rotate(-4deg); }
+    50%{ transform:rotate(5deg); }
+    100%{ transform:rotate(-4deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .flower{ animation:grow .01s forwards; will-change:auto; }
+    .flower .head{ animation:none; will-change:auto; }
+    .sun{ animation:none; top:42%; transform:translate(-50%,0); will-change:auto; }
+    .mote{ animation:none; opacity:0; will-change:auto; }
+    .star{ animation:none; opacity:.6; will-change:auto; }
+    .hero-text{ animation:none; opacity:1; transform:translate(-50%,-50%); }
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width:600px){
+    .sun{ width:52vw; height:52vw; }
+  }
+
+  /* ---------- TEXTO CENTRAL ---------- */
+  .hero-text{
+    position:absolute;
+    left:50%;
+    top:27%;
+    transform:translate(-50%,-50%);
+    z-index:5;
+    width:min(86%, 620px);
+    text-align:center;
+    pointer-events:none;
+    font-family:'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:clamp(1.05rem, 3.4vw, 1.7rem);
+    letter-spacing:.03em;
+    line-height:1.5;
+    color:rgba(255,244,222,.82);
+    text-shadow:0 0 18px rgba(255,205,110,.35), 0 2px 10px rgba(0,0,0,.25);
+    opacity:0;
+    animation:heroIn 2.4s ease-out 2.6s forwards, heroFloat 9s ease-in-out 5s infinite;
+  }
+  .hero-text::before,
+  .hero-text::after{
+    content:'';
+    display:block;
+    width:34px;
+    height:1px;
+    margin:.55em auto;
+    background:linear-gradient(90deg, transparent, rgba(255,221,150,.55), transparent);
+  }
+  @keyframes heroIn{
+    0%{ opacity:0; transform:translate(-50%,-42%); }
+    100%{ opacity:1; transform:translate(-50%,-50%); }
+  }
+  @keyframes heroFloat{
+    0%,100%{ transform:translate(-50%,-50%); }
+    50%{ transform:translate(-50%, calc(-50% - 6px)); }
+  }
+  @media (max-width:480px){
+    .hero-text{ top:24%; }
+  }
+
+  .credit{
+    position:absolute;
+    bottom:10px;
+    right:14px;
+    z-index:8;
+    font-size:.65rem;
+    letter-spacing:.06em;
+    color:rgba(255, 255, 255, 0.087);
+    font-weight:500;
+    pointer-events:none;
+  }
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="sky"></div>
+  <div class="stars" id="stars"></div>
+  <div class="sun"></div>
+  <p class="hero-text">Se que no puedo darte las flores en fisico, pero espero puedas disfrutar estas, te quiero muchisimo, descansa✨</p>
+
+  <div class="hill hill--3">
+    <svg viewBox="0 0 400 90" preserveAspectRatio="none"><path d="M0,90 L0,55 Q80,15 160,40 T320,30 Q370,20 400,45 L400,90 Z" fill="var(--hill-3)"/></svg>
+  </div>
+  <div class="hill hill--2">
+    <svg viewBox="0 0 400 70" preserveAspectRatio="none"><path d="M0,70 L0,38 Q100,8 210,30 T400,20 L400,70 Z" fill="var(--hill-2)"/></svg>
+  </div>
+  <div class="hill hill--1">
+    <svg viewBox="0 0 400 50" preserveAspectRatio="none"><path d="M0,50 L0,26 Q120,2 230,18 T400,10 L400,50 Z" fill="var(--hill-1)"/></svg>
+  </div>
+
+  <div class="field" id="field"></div>
+  <div class="pollen" id="pollen"></div>
+</div>
+
+<div class="credit">❤️ Jijijij</div>
+
+<!-- Definiciones SVG compartidas: un solo girasol maestro, reutilizado con <use> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="petalGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--petal-a)"/>
+      <stop offset="100%" stop-color="var(--petal-b)"/>
+    </linearGradient>
+
+    <radialGradient id="centerGrad" cx="38%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="var(--center-a)"/>
+      <stop offset="100%" stop-color="var(--center-b)"/>
+    </radialGradient>
+
+    <linearGradient id="stemGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--stem-a)"/>
+      <stop offset="100%" stop-color="var(--stem-b)"/>
+    </linearGradient>
+
+    <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="var(--stem-a)"/>
+      <stop offset="100%" stop-color="var(--stem-b)"/>
+    </linearGradient>
+
+    <!-- Un pétalo, apuntando hacia arriba, base en el origen.                      -->
+    <!-- Nota técnica: usamos <g> (no <symbol>) para que <use> no cree un viewport  -->
+    <!-- implícito que estire el contenido al 100% del contenedor.                  -->
+    <g id="petal">
+      <path d="M0,0 C-8,-9 -9,-28 -6,-44 C-4,-53 -1.5,-57 0,-58 C1.5,-57 4,-53 6,-44 C9,-28 8,-9 0,0 Z" fill="url(#petalGrad)"/>
+      <path d="M0,-4 L0,-50" stroke="rgba(0,0,0,.12)" stroke-width="1"/>
+    </g>
+
+    <!-- Semillero: espiral del ángulo dorado (137.5°), igual que un girasol real -->
+    <g id="seedPattern">
+      <g fill="var(--center-b)" opacity=".55">
+<circle cx="0.00" cy="0.00" r="1.15"/>
+<circle cx="-1.36" cy="1.25" r="1.15"/>
+<circle cx="0.23" cy="-2.61" r="1.15"/>
+<circle cx="1.95" cy="2.54" r="1.16"/>
+<circle cx="-3.64" cy="-0.64" r="1.16"/>
+<circle cx="3.49" cy="-2.22" r="1.16"/>
+<circle cx="-1.18" cy="4.38" r="1.16"/>
+<circle cx="-2.26" cy="-4.34" r="1.16"/>
+<circle cx="4.92" cy="1.79" r="1.17"/>
+<circle cx="-5.13" cy="2.12" r="1.17"/>
+<circle cx="2.48" cy="-5.30" r="1.17"/>
+<circle cx="1.84" cy="5.85" r="1.17"/>
+<circle cx="-5.54" cy="-3.21" r="1.17"/>
+<circle cx="6.51" cy="-1.43" r="1.18"/>
+<circle cx="-3.98" cy="5.66" r="1.18"/>
+<circle cx="-0.92" cy="-7.11" r="1.18"/>
+<circle cx="5.66" cy="4.77" r="1.18"/>
+<circle cx="-7.62" cy="0.32" r="1.18"/>
+<circle cx="5.56" cy="-5.54" r="1.18"/>
+<circle cx="-0.37" cy="8.06" r="1.19"/>
+<circle cx="-5.30" cy="-6.35" r="1.19"/>
+<circle cx="8.40" cy="1.13" r="1.19"/>
+<circle cx="-7.12" cy="4.96" r="1.19"/>
+<circle cx="1.95" cy="-8.66" r="1.19"/>
+<circle cx="4.51" cy="7.86" r="1.20"/>
+<circle cx="-8.81" cy="-2.81" r="1.20"/>
+<circle cx="8.56" cy="-3.96" r="1.20"/>
+<circle cx="-3.71" cy="8.87" r="1.20"/>
+<circle cx="-3.31" cy="-9.21" r="1.20"/>
+<circle cx="8.82" cy="4.63" r="1.21"/>
+<circle cx="-9.80" cy="2.58" r="1.21"/>
+<circle cx="5.57" cy="-8.66" r="1.21"/>
+<circle cx="1.77" cy="10.31" r="1.21"/>
+<circle cx="-8.40" cy="-6.51" r="1.21"/>
+<circle cx="10.75" cy="-0.89" r="1.22"/>
+<circle cx="-7.43" cy="8.03" r="1.22"/>
+<circle cx="0.05" cy="-11.10" r="1.22"/>
+<circle cx="7.56" cy="8.33" r="1.22"/>
+<circle cx="-11.36" cy="-1.05" r="1.22"/>
+<circle cx="9.20" cy="-6.98" r="1.23"/>
+<circle cx="-2.09" cy="11.51" r="1.23"/>
+<circle cx="-6.31" cy="-10.03" r="1.23"/>
+<circle cx="11.56" cy="3.17" r="1.23"/>
+<circle cx="-10.79" cy="5.54" r="1.23"/>
+<circle cx="4.27" cy="-11.51" r="1.24"/>
+<circle cx="4.68" cy="11.49" r="1.24"/>
+<circle cx="-11.34" cy="-5.37" r="1.24"/>
+<circle cx="12.12" cy="-3.74" r="1.24"/>
+<circle cx="-6.48" cy="11.06" r="1.24"/>
+<circle cx="-2.72" cy="-12.66" r="1.25"/>
+<circle cx="10.66" cy="7.58" r="1.25"/>
+<circle cx="-13.11" cy="1.63" r="1.25"/>
+<circle cx="8.65" cy="-10.16" r="1.25"/>
+<circle cx="0.49" cy="13.46" r="1.25"/>
+<circle cx="-9.54" cy="-9.68" r="1.25"/>
+<circle cx="13.70" cy="0.70" r="1.26"/>
+<circle cx="-10.67" cy="8.82" r="1.26"/>
+<circle cx="1.93" cy="-13.83" r="1.26"/>
+<circle cx="7.99" cy="11.60" r="1.26"/>
+<circle cx="-13.85" cy="-3.19" r="1.26"/>
+<circle cx="12.47" cy="-7.06" r="1.27"/>
+<circle cx="-4.46" cy="13.74" r="1.27"/>
+<circle cx="-6.05" cy="-13.25" r="1.27"/>
+<circle cx="13.52" cy="5.73" r="1.27"/>
+<circle cx="-13.95" cy="4.94" r="1.27"/>
+<circle cx="7.00" cy="-13.17" r="1.28"/>
+<circle cx="3.76" cy="14.55" r="1.28"/>
+<circle cx="-12.70" cy="-8.25" r="1.28"/>
+<circle cx="15.05" cy="-2.51" r="1.28"/>
+<circle cx="-9.47" cy="12.10" r="1.28"/>
+<circle cx="-1.20" cy="-15.43" r="1.29"/>
+<circle cx="11.39" cy="10.64" r="1.29"/>
+<circle cx="-15.70" cy="-0.15" r="1.29"/>
+<circle cx="11.76" cy="-10.56" r="1.29"/>
+<circle cx="-1.55" cy="15.84" r="1.29"/>
+<circle cx="-9.62" cy="-12.81" r="1.30"/>
+<circle cx="15.85" cy="2.96" r="1.30"/>
+<circle cx="-13.78" cy="8.58" r="1.30"/>
+<circle cx="4.40" cy="-15.74" r="1.30"/>
+<circle cx="7.44" cy="14.67" r="1.30"/>
+<circle cx="-15.49" cy="-5.83" r="1.31"/>
+<circle cx="15.45" cy="-6.20" r="1.31"/>
+<circle cx="-7.25" cy="15.10" r="1.31"/>
+<circle cx="-4.89" cy="-16.13" r="1.31"/>
+<circle cx="14.59" cy="8.64" r="1.31"/>
+<circle cx="-16.69" cy="3.50" r="1.32"/>
+<circle cx="10.00" cy="-13.94" r="1.32"/>
+<circle cx="2.05" cy="17.13" r="1.32"/>
+<circle cx="-13.16" cy="-11.31" r="1.32"/>
+<circle cx="17.44" cy="-0.55" r="1.32"/>
+<circle cx="-12.56" cy="12.26" r="1.32"/>
+<circle cx="0.99" cy="-17.62" r="1.33"/>
+<circle cx="11.24" cy="13.73" r="1.33"/>
+<circle cx="-17.66" cy="-2.55" r="1.33"/>
+<circle cx="14.82" cy="-10.10" r="1.33"/>
+<circle cx="-4.13" cy="17.55" r="1.33"/>
+<circle cx="-8.86" cy="-15.81" r="1.34"/>
+<circle cx="17.30" cy="5.71" r="1.34"/>
+<circle cx="-16.70" cy="7.52" r="1.34"/>
+<circle cx="7.27" cy="-16.91" r="1.34"/>
+<circle cx="6.09" cy="17.47" r="1.34"/>
+<circle cx="-16.37" cy="-8.81" r="1.35"/>
+<circle cx="18.11" cy="-4.59" r="1.35"/>
+<circle cx="-10.31" cy="15.69" r="1.35"/>
+<circle cx="-3.01" cy="-18.62" r="1.35"/>
+<circle cx="14.87" cy="11.75" r="1.35"/>
+<circle cx="-19.00" cy="1.39" r="1.36"/>
+<circle cx="13.13" cy="-13.92" r="1.36"/>
+<circle cx="-0.28" cy="19.22" r="1.36"/>
+<circle cx="-12.84" cy="-14.43" r="1.36"/>
+<circle cx="19.30" cy="1.98" r="1.36"/>
+<circle cx="-15.64" cy="11.63" r="1.37"/>
+<circle cx="3.69" cy="-19.23" r="1.37"/>
+<circle cx="10.31" cy="16.75" r="1.37"/>
+<circle cx="-19.00" cy="-5.41" r="1.37"/>
+<circle cx="17.74" cy="-8.89" r="1.37"/>
+<circle cx="-7.11" cy="18.61" r="1.38"/>
+<circle cx="-7.36" cy="-18.61" r="1.38"/>
+<circle cx="18.08" cy="8.78" r="1.38"/>
+<circle cx="-19.34" cy="5.76" r="1.38"/>
+<circle cx="10.42" cy="-17.38" r="1.38"/>
+<circle cx="4.08" cy="19.94" r="1.39"/>
+<circle cx="-16.54" cy="-12.00" r="1.39"/>
+<circle cx="20.38" cy="-2.34" r="1.39"/>
+<circle cx="-13.51" cy="15.56" r="1.39"/>
+<circle cx="-0.55" cy="-20.68" r="1.39"/>
+<circle cx="14.43" cy="14.93" r="1.39"/>
+<circle cx="-20.81" cy="-1.27" r="1.40"/>
+<circle cx="16.26" cy="-13.17" r="1.40"/>
+<circle cx="-3.11" cy="20.78" r="1.40"/>
+<circle cx="-11.79" cy="-17.49" r="1.40"/>
+<circle cx="20.59" cy="4.95" r="1.40"/>
+<circle cx="-18.59" cy="10.30" r="1.41"/>
+<circle cx="6.78" cy="-20.23" r="1.41"/>
+<circle cx="8.70" cy="19.57" r="1.41"/>
+<circle cx="-19.71" cy="-8.59" r="1.41"/>
+<circle cx="20.41" cy="-7.00" r="1.41"/>
+<circle cx="-10.35" cy="19.02" r="1.42"/>
+<circle cx="-5.23" cy="-21.09" r="1.42"/>
+<circle cx="18.17" cy="12.06" r="1.42"/>
+<circle cx="-21.63" cy="3.39" r="1.42"/>
+<circle cx="13.70" cy="-17.17" r="1.42"/>
+<circle cx="1.50" cy="21.99" r="1.43"/>
+<circle cx="-16.02" cy="-15.26" r="1.43"/>
+<circle cx="22.20" cy="0.43" r="1.43"/>
+<circle cx="-16.72" cy="14.72" r="1.43"/>
+<circle cx="2.39" cy="-22.23" r="1.43"/>
+<circle cx="13.30" cy="18.06" r="1.44"/>
+<circle cx="-22.08" cy="-4.35" r="1.44"/>
+<circle cx="19.29" cy="-11.75" r="1.44"/>
+<circle cx="-6.31" cy="21.76" r="1.44"/>
+<circle cx="-10.08" cy="-20.38" r="1.44"/>
+<circle cx="21.27" cy="8.24" r="1.45"/>
+<circle cx="-21.32" cy="8.32" r="1.45"/>
+<circle cx="10.13" cy="-20.60" r="1.45"/>
+<circle cx="6.46" cy="22.11" r="1.45"/>
+<circle cx="-19.76" cy="-11.97" r="1.45"/>
+<circle cx="22.73" cy="-4.53" r="1.46"/>
+<circle cx="-13.74" cy="18.76" r="1.46"/>
+<circle cx="-2.55" cy="-23.19" r="1.46"/>
+<circle cx="17.60" cy="15.43" r="1.46"/>
+<circle cx="-23.47" cy="0.51" r="1.46"/>
+<circle cx="17.01" cy="-16.28" r="1.46"/>
+<circle cx="-1.55" cy="23.57" r="1.47"/>
+<circle cx="-14.82" cy="-18.48" r="1.47"/>
+<circle cx="23.49" cy="3.63" r="1.47"/>
+<circle cx="-19.83" cy="13.23" r="1.47"/>
+<circle cx="5.70" cy="-23.22" r="1.47"/>
+<circle cx="11.51" cy="21.03" r="1.48"/>
+<circle cx="-22.77" cy="-7.76" r="1.48"/>
+<circle cx="22.09" cy="-9.69" r="1.48"/>
+<circle cx="-9.77" cy="22.13" r="1.48"/>
+<circle cx="-7.76" cy="-22.99" r="1.48"/>
+<circle cx="21.31" cy="11.74" r="1.49"/>
+<circle cx="-23.71" cy="5.76" r="1.49"/>
+<circle cx="13.64" cy="-20.32" r="1.49"/>
+<circle cx="3.68" cy="24.26" r="1.49"/>
+<circle cx="-19.16" cy="-15.45" r="1.49"/>
+<circle cx="24.63" cy="-1.56" r="1.50"/>
+<circle cx="-17.16" cy="17.84" r="1.50"/>
+      </g>
+    </g>
+
+    <!-- Hoja, apuntando hacia la derecha -->
+    <g id="leaf">
+      <path d="M2,40 C4,20 18,4 44,2 C38,20 36,42 44,64 C22,58 4,54 2,40 Z" fill="url(#leafGrad)"/>
+      <path d="M6,38 C14,26 26,16 40,8" stroke="rgba(0,0,0,.18)" stroke-width="1.3" fill="none"/>
+    </g>
+
+  </defs>
+</svg>
+
+<!-- Plantilla de un girasol: se clona por cada instancia en JS (evita depender      -->
+<!-- de que el CSS atraviese el árbol de instancias de <use>, que no es fiable).     -->
+<template id="flowerTemplate"><svg xmlns="http://www.w3.org/2000/svg">
+  <g class="stem-group">
+    <path d="M0,26 C-10,90 8,170 -3,270" fill="none" stroke="url(#stemGrad)" stroke-width="9" stroke-linecap="round"></path>
+    <use href="#leaf" transform="translate(-2,110) rotate(-18) scale(-1,1) translate(-6,0)" opacity=".95"></use>
+    <use href="#leaf" transform="translate(2,175) rotate(24)" opacity=".95"></use>
+
+    <g class="head">
+      <g class="petals">
+        <use href="#petal" transform="rotate(0) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(20) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(40) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(60) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(80) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(100) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(120) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(140) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(160) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(180) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(200) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(220) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(240) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(260) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(280) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(300) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(320) translate(0,-23)"></use>
+        <use href="#petal" transform="rotate(340) translate(0,-23)"></use>
+      </g>
+      <circle r="25" fill="url(#centerGrad)"></circle>
+      <use href="#seedPattern"></use>
+      <circle r="25" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1"></circle>
+    </g>
+  </g>
+</svg></template>
+
+<script>
+(function(){
+  // Altura real del viewport en móviles (evita saltos por la barra de direcciones)
+  function setVh(){
+    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+  }
+  setVh();
+  window.addEventListener('resize', debounce(setVh, 150));
+  window.addEventListener('orientationchange', setVh);
+
+  function debounce(fn, wait){
+    let t;
+    return function(){ clearTimeout(t); t = setTimeout(fn, wait); };
+  }
+
+  const field = document.getElementById('field');
+  const pollenBox = document.getElementById('pollen');
+  const starsBox = document.getElementById('stars');
+  const flowerTemplate = document.getElementById('flowerTemplate');
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function rand(min, max){ return Math.random() * (max - min) + min; }
+  function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+  /* ----- Estrellas ----- */
+  function buildStars(){
+    starsBox.innerHTML = '';
+    const count = window.innerWidth < 600 ? 22 : 40;
+    const frag = document.createDocumentFragment();
+    for(let i=0;i<count;i++){
+      const s = document.createElement('div');
+      s.className = 'star';
+      s.style.left = rand(0,100) + '%';
+      s.style.top = rand(0,60) + '%';
+      s.style.setProperty('--star-o', rand(.3,.9).toFixed(2));
+      s.style.animationDuration = rand(2.5,5.5).toFixed(2) + 's';
+      s.style.animationDelay = rand(0,4).toFixed(2) + 's';
+      frag.appendChild(s);
+    }
+    starsBox.appendChild(frag);
+  }
+
+  /* ----- Polen / luciérnagas ----- */
+  function buildPollen(){
+    pollenBox.innerHTML = '';
+    if(prefersReduced) return;
+    const count = window.innerWidth < 600 ? 10 : 20;
+    const frag = document.createDocumentFragment();
+    for(let i=0;i<count;i++){
+      const m = document.createElement('div');
+      m.className = 'mote';
+      m.style.left = rand(0,100) + '%';
+      m.style.setProperty('--drift', rand(-40,40).toFixed(0) + 'px');
+      m.style.animationDuration = rand(9,18).toFixed(2) + 's';
+      m.style.animationDelay = rand(0,14).toFixed(2) + 's';
+      frag.appendChild(m);
+    }
+    pollenBox.appendChild(frag);
+  }
+
+  /* ----- Campo de girasoles ----- */
+  function buildField(){
+    field.innerHTML = '';
+    const w = window.innerWidth;
+    const count = w < 480 ? 7 : w < 900 ? 11 : 15;
+    const frag = document.createDocumentFragment();
+
+    // Capa de fondo (más pequeños, más oscuros, detrás)
+    const layers = [
+      { n: Math.ceil(count*0.35), hMin:22, hMax:30, briMin:.72, briMax:.85, z:1, swayMin:6, swayMax:8, ampMin:2, ampMax:3 },
+      { n: Math.ceil(count*0.35), hMin:30, hMax:40, briMin:.85, briMax:.98, z:2, swayMin:6.5,swayMax:9, ampMin:2.5,ampMax:3.5 },
+      { n: count - Math.ceil(count*0.35)*2, hMin:40, hMax:54, briMin:.98,briMax:1.08, z:3, swayMin:7, swayMax:10, ampMin:3, ampMax:4.5 },
+    ];
+
+    // Mezclamos las posiciones horizontales para que las flores pequeñas (fondo)
+    // y grandes (frente) se repartan por todo el ancho, no por bloques.
+    const slots = Array.from({length: count}, (_, i) => i);
+    for(let i = slots.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+    let slotPointer = 0;
+    let globalIndex = 0;
+
+    layers.forEach(layer => {
+      for(let i=0;i<layer.n;i++){
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('viewBox', '-120 -100 240 400');
+        svg.setAttribute('class', 'flower');
+        svg.setAttribute('aria-hidden', 'true');
+        const clone = flowerTemplate.content.cloneNode(true);
+        const stemGroup = clone.querySelector('.stem-group');
+        svg.appendChild(stemGroup);
+
+        const slot = slots[slotPointer++];
+        const left = ((slot + rand(.08,.92)) / count) * 100;
+        const h = rand(layer.hMin, layer.hMax);
+        const bri = rand(layer.briMin, layer.briMax);
+        const hue = rand(-6,6);
+        const sat = rand(.9,1.15);
+        const delay = rand(0, 1.1) + (globalIndex * 0.06);
+        const swayDur = rand(layer.swayMin, layer.swayMax);
+        const swayAmt = rand(layer.ampMin, layer.ampMax);
+        const trackDur = rand(46,74);
+
+        svg.style.setProperty('--h', h + 'vh');
+        svg.style.setProperty('--bri', bri.toFixed(2));
+        svg.style.setProperty('--hue', hue.toFixed(1) + 'deg');
+        svg.style.setProperty('--sat', sat.toFixed(2));
+        svg.style.setProperty('--grow-delay', delay.toFixed(2) + 's');
+        svg.style.setProperty('--sway-dur', swayDur.toFixed(2) + 's');
+        svg.style.setProperty('--sway-amt', swayAmt.toFixed(2));
+        svg.style.setProperty('--track-dur', trackDur.toFixed(1) + 's');
+        svg.style.left = left.toFixed(2) + '%';
+        svg.style.zIndex = layer.z;
+
+        if(prefersReduced){
+          svg.style.animation = 'none';
+          svg.style.transform = 'translateX(-50%) scaleY(1)';
+        }
+
+        frag.appendChild(svg);
+        globalIndex++;
+      }
+    });
+
+    field.appendChild(frag);
+  }
+
+  function buildAll(){
+    buildStars();
+    buildPollen();
+    buildField();
+  }
+
+  buildAll();
+  window.addEventListener('resize', debounce(buildAll, 250));
+})();
+</script>
+</body>
+</html>
